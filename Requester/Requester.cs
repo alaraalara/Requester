@@ -98,58 +98,73 @@ namespace Requester
             else
             {
                 //instead of throwing exception it should just return the old request as there is nothing to compare
+                //What about errors?
                 throw new Exception("The structure is not Json");
             }
         }
 
 
         //NOTE TODO: Url might change too! depending on the previous body
-        private Log CompareRequestAndResponse(Log OldPreviousResponse, Log OldRequest, string NewPreviousResponse)
+        public Log ChangeOldRequest(Log OldPreviousResponse, Log Request, string NewPreviousResponse)
         {
-            var newRequest = OldRequest;
-            var OldPreviousResponseJson = GetJToken(OldPreviousResponse.Body);
-            var newReqJson = GetJToken(newRequest.Body);
-            var NewPreviousResponseJson = GetJToken(NewPreviousResponse);
-            if(OldPreviousResponse == null || NewPreviousResponse == null || NewPreviousResponse == null)
+            if (OldPreviousResponse.Body == null || NewPreviousResponse == null || Request.Body == null)
             {
-                return newRequest;
+                return Request;
             }
+            var OldPreviousResponseJson = GetJToken(OldPreviousResponse.Body);
+            var RequestJson = GetJToken(Request.Body);
+            var NewPreviousResponseJson = GetJToken(NewPreviousResponse);
             var difference = new JsonDiffPatch().Diff(NewPreviousResponseJson, OldPreviousResponseJson);
+    
             if(difference == null)
             {
-                return OldRequest;
+                return Request;
             }
             else  
             {
-                List<JToken> tokens = JsonExtensions.FindTokens(OldPreviousResponseJson, "value");
-                //edge cases where value keyword does not exist
-                tokens.AddRange(JsonExtensions.FindTokens(OldPreviousResponseJson, "id"));
-                tokens.AddRange(JsonExtensions.FindTokens(OldPreviousResponseJson, "note"));//there are more potential fields!!
-                foreach(var token in tokens)
+                CompareJsonBody(OldPreviousResponseJson, NewPreviousResponseJson, RequestJson);
+
+            }
+            Request.Body = RequestJson.ToString();
+            Console.WriteLine(Request.Body);
+            return Request;
+        }
+
+        
+        private void CompareJsonBody(JToken OldPreviousResponseJson, JToken NewPreviousResponseJson, JToken newReqJson)
+        {
+            var tokensResponse = JsonExtensions.FindTokens(OldPreviousResponseJson, "value").Concat(JsonExtensions.FindTokens(OldPreviousResponseJson, "id"));
+            foreach (var token in tokensResponse)
+            {
+                if (JToken.DeepEquals(NewPreviousResponseJson.SelectToken(token.Path), token) == false)
                 {
-                    foreach(var i in JsonExtensions.FindTokens(OldPreviousResponseJson, "id"))
+                    if ((newReqJson.SelectToken(token.Path)) != null)
                     {
-                        if(i.Path == "id")
-                        {
-                            Console.WriteLine(i.Path);
-                            Console.WriteLine(token);
-                            Console.WriteLine(NewPreviousResponseJson.SelectToken(token.Path));
-                        }
-                    }
-                    //Console.WriteLine(token);
-                    if (JToken.DeepEquals(NewPreviousResponseJson.SelectToken(token.Path), token) == false 
-                        && newReqJson.SelectToken(token.Path) != null)
-                    {
-                        Console.WriteLine(token.Path);
                         newReqJson.SetByPath(token.Path, NewPreviousResponseJson.SelectToken(token.Path));
+                    }
+                    else
+                    {
+                        //the path of the request might be different than that of response (additional fields)
+                        //TODO: can there be more than 1 additional field?
+                        var tokensRequest = JsonExtensions.FindTokens(newReqJson, "value").Concat(JsonExtensions.FindTokens(newReqJson, "id"));
+                        foreach (var token2 in tokensRequest)
+                        {
+                            var subPath = token2.Path.Replace(token2.Path.Split(".")[0] + ".", "");
+                            if (subPath == token.Path)
+                            {
+                                var valueToSet = NewPreviousResponseJson.SelectToken(token.Path);
+                                if (valueToSet != null)
+                                {
+                                    newReqJson.SetByPath(token2.Path, valueToSet);
+                                }
+                            }
+                        }
                     }
                 }
 
             }
-            newRequest.Body = newReqJson.ToString();
-            return newRequest;
         }
-
+        
         public string CompareQueryStringAndResponse(Log PreviousResponse, Log NewResponse, string Cookies)
         {
             string a = "?fileID=aa015587-d4e0-47f6-84f5-42fc5f9ff870";
@@ -263,7 +278,7 @@ namespace Requester
                             if (NewPreviousResponse != null && OldPreviousResponseLog!=null)
                             {
                                 //data.response has to be the prev response before data.request
-                                NewRequest = CompareRequestAndResponse(OldPreviousResponseLog, data.Request, NewPreviousResponse.Content.ReadAsStringAsync().Result);
+                                NewRequest = ChangeOldRequest(OldPreviousResponseLog, data.Request, NewPreviousResponse.Content.ReadAsStringAsync().Result);
                                 Console.WriteLine(NewRequest.Body);
                             }
                             NewPreviousResponse = client.HttpCall(NewRequest).Result;

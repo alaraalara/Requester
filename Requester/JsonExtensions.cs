@@ -12,8 +12,11 @@ namespace Requester
     {
         public static void SetByPath(this JToken obj, string path, JToken value)
         {
-            JToken token = obj.SelectToken(path);
-            token.Replace(value);
+            Console.WriteLine(path);
+            Console.WriteLine(obj);   
+            JToken? token = obj.SelectToken(path);
+            Console.WriteLine(token);
+            token?.Replace(value);
         }
 
         
