@@ -1,29 +1,20 @@
-﻿using Requester.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿
+using Acumatica.Auth.Model;
+using Newtonsoft.Json;
+using Requester.Models;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Requester
 {
-    public class HttpMethods
+    public partial class Requester
     {
-        HttpClient client;
-        string portNumber;
-
-        public HttpMethods(string portNumber)
-        {
-            this.client = new HttpClient();
-            this.portNumber = portNumber;
-        }
-
         
+
 
         public async Task<HttpResponseMessage> Logout(Log log)
         {
-            string url = "http://localhost" + portNumber + "/22R193/entity/auth/logout";
+            string url = "http://" + host + portNumber + "/22R193/entity/auth/logout";
             var message = new HttpRequestMessage(HttpMethod.Post, url);
             message.Content = new StringContent(log.Body, Encoding.UTF8, "application/json");
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
@@ -39,7 +30,11 @@ namespace Requester
         /// 
         public async Task<HttpResponseMessage> HttpCall(Log log)
         {
-            var url = "http://localhost" + portNumber + log.Path;
+            var url = "http://" + host + portNumber + log.Path;
+            if(log.QueryString!= null)
+            {
+                url += log.QueryString;
+            }
             var message = new HttpRequestMessage(new HttpMethod(log.Method), url);
 
             if (log.Body != null)
@@ -49,6 +44,28 @@ namespace Requester
             var response = await client.SendAsync(message);
             return response;
         }
+
+        private static async Task<Token> GetElibilityToken()
+        {
+            string baseAddress = @"https://blah.blah.blah.com/oauth2/token";
+
+            string grant_type = "client_credentials";
+            string client_id = "myId";
+            string client_secret = "shhhhhhhhhhhhhhItsSecret";
+
+            var form = new Dictionary<string, string>
+                {
+                    {"grant_type", grant_type},
+                    {"client_id", client_id},
+                    {"client_secret", client_secret},
+                };
+
+            HttpResponseMessage tokenResponse = await client.PostAsync(baseAddress, new FormUrlEncodedContent(form));
+            var jsonContent = await tokenResponse.Content.ReadAsStringAsync();
+            Token tok = JsonConvert.DeserializeObject<Token>(jsonContent);
+            return tok;
+        }
+
 
     }
 }

@@ -17,30 +17,7 @@ namespace Requester
 
             using (var acuprox = new AcuProxContext())
             {
-                var sameRequests = acuprox.Logs.Where(data => data.ProcGuid == new Guid("B4979F54-2D22-4CDA-935B-50A5B3C99062") ||
-                                                              data.ProcGuid == new Guid("FB3CF3A6-8CAA-42EB-8E8F-CF33049AC220") ||
-                                                              data.ProcGuid == new Guid("EA1B17A0-F7CE-4766-8863-3EA6C36E3211") ||
-                                                              data.ProcGuid == new Guid("BC9F84EF-5E68-44EB-8A4C-116109B677FE") ||
-                                                              data.ProcGuid == new Guid("BA0CF4CE-62B3-4106-B170-623C43FEF9AB") ||
-                                                              data.ProcGuid == new Guid("40744521-9743-481D-9BF6-BB460A86A1B4") ||
-                                                              data.ProcGuid == new Guid("3956C49E-8D3E-4975-A763-D371D96D558F"))
-                                                              .OrderBy(data => data.Dt)
-                                                              .ToList();
-
-                var sameRequests2 = acuprox.Logs.Where(data => data.ProcGuid == new Guid("BEEEC9BF-C918-4E7F-91BF-307F6F8FDDCD") ||
-                                              data.ProcGuid == new Guid("3B982BF7-4376-4C4E-A9D4-6D6DBED9A3D5") ||
-                                              data.ProcGuid == new Guid("6E6A512C-DEE2-4520-A862-2C6A376EDC0E") ||
-                                              data.ProcGuid == new Guid("85F049B5-C041-460A-8B23-7D9B5CCABC52") ||
-                                              data.ProcGuid == new Guid("50F6265D-F5DA-4BD2-9F6A-873D550AB6D8") ||
-                                              data.ProcGuid == new Guid("9F922C6D-4436-40C3-A9D1-88ACA8BD1CED") ||
-                                              data.ProcGuid == new Guid("DBFBC65A-2E7F-404A-9777-B6D9F05C6AED") ||
-                                              data.ProcGuid == new Guid("8477B58D-8938-4A88-B469-A58AAF3BDE43") ||
-                                              data.ProcGuid == new Guid("425E57D1-6536-4833-88F2-D16179C3D23C") ||
-                                              data.ProcGuid == new Guid("0FB6B3FD-915A-4958-AF15-3E1EC03D6694") ||
-                                              data.ProcGuid == new Guid("5995D90B-F6A0-4668-A515-904490D1BCC7"))
-                                              .OrderBy(data => data.Dt)
-                                              .ToList();
-
+                
 
 
                 /*
@@ -87,7 +64,7 @@ namespace Requester
 
                 List<Log> list = new List<Log>() { login, request1, response1, request2, response2 };
 
-                Requester requester = new Requester(list);
+                Requester requester = new Requester(list, "localhost");
 
                 //requester.ReExecuteRequests(list);
 
@@ -104,7 +81,7 @@ namespace Requester
                 var request2a = acuprox.Logs.Where(data => data.ProcGuid == new Guid("BC5CB547-1075-4267-9169-1AD39D62C05B") && data.EventType == 1).First();
                 var response2a = acuprox.Logs.Where(data => data.ProcGuid == new Guid("BC5CB547-1075-4267-9169-1AD39D62C05B") && data.EventType == 2).First();
                 List<Log> listA = new List<Log>() { logina, request1a, response1a, request2a, response2a };             
-                Requester requesterA = new Requester(listA, "5000");
+                Requester requesterA = new Requester(listA, "localhost", "5000");
                 //requesterA.Execute();
 
                 //requester.GetNewPath();
@@ -121,14 +98,34 @@ namespace Requester
                                               data.ProcGuid == new Guid("43FB4379-C2FA-40AC-AEA1-A41093C12258"))
                                               .OrderBy(data => data.Dt)
                                               .ToList();
-                Requester requesterLasVegasSummit = new Requester(LasVegasSummit);
-                requesterLasVegasSummit.Execute();
-                string a = "{\"id\":\"2e6f0766-43a2-ed11-8715-28dfebb71e4c\",\"rowNumber\":1,\"note\":{\"value\":\"\"},\"Approved\":{\"value\":true},\"BaseCurrencyID\":{\"value\":\"USD\"},\"BillToAddressOverride\":{\"value\":false},\"BillToContactOverride\":{\"value\":false},\"CashAccount\":{\"value\":\"10200\"},\"ContactID\":{\"value\":\"9977\"},\"ControlTotal\":{\"value\":31655.0000},\"CreatedDate\":{\"value\":\"2023-02-01T10:16:55.41-05:00\"},\"CreditHold\":{\"value\":false},\"CurrencyID\":{\"value\":\"USD\"},\"CurrencyRate\":{\"value\":1.00000000},\"CurrencyRateTypeID\":{},\"CustomerID\":{\"value\":\"ABARTENDE\"},\"CustomerOrder\":{},\"Date\":{\"value\":\"2023-02-01T00:00:00-05:00\"},\"Description\":{\"value\":\"Test for Webinar by Key Fields\"},\"DestinationWarehouseID\":{},\"DisableAutomaticDiscountUpdate\":{\"value\":false},\"EffectiveDate\":{\"value\":\"2013-01-01T00:00:00-05:00\"},\"ExternalOrderOrigin\":{},\"ExternalOrderOriginal\":{},\"ExternalOrderSource\":{},\"ExternalRef\":{},\"ExternalRefundRef\":{},\"Hold\":{\"value\":false},\"IsTaxValid\":{},\"LastModified\":{\"value\":\"2023-02-01T10:18:32.51-05:00\"},\"LocationID\":{\"value\":\"MAIN\"},\"NoteID\":{\"value\":\"2e6f0766-43a2-ed11-8715-28dfebb71e4c\"},\"OrderedQty\":{\"value\":6.000000},\"OrderNbr\":{\"value\":\"SO006805\"},\"OrderTotal\":{\"value\":31655.0000},\"OrderType\":{\"value\":\"SO\"},\"PaymentMethod\":{\"value\":\"CHECK\"},\"PaymentRef\":{},\"PreferredWarehouseID\":{},\"Project\":{\"value\":\"X\"},\"ReciprocalRate\":{\"value\":1.00000000},\"RequestedOn\":{\"value\":\"2023-02-01T00:00:00-05:00\"},\"ShipToAddressOverride\":{\"value\":false},\"ShipToContactOverride\":{\"value\":false},\"ShipVia\":{},\"Status\":{\"value\":\"Open\"},\"TaxTotal\":{\"value\":0.0000},\"VATExemptTotal\":{\"value\":0.0000},\"VATTaxableTotal\":{\"value\":0.0000},\"WillCall\":{\"value\":true},\"custom\":{},\"_links\":{\"self\":\"/22R193/entity/default/22.200.001/SalesOrder/2e6f0766-43a2-ed11-8715-28dfebb71e4c\",\"files:put\":\"/22R193/entity/default/22.200.001/files/PX.Objects.SO.SOOrderEntry/Document/2e6f0766-43a2-ed11-8715-28dfebb71e4c/{filename}\"}}";
-                string b = "{\"id\":\"2e6f0766-43a2-ed11-8715-28dfebb71e4c\",\"rowNumber\":1,\"note\":{\"value\":\"\"},\"Approved\":{\"value\":true},\"BaseCurrencyID\":{\"value\":\"USD\"},\"BillToAddressOverride\":{\"value\":false},\"BillToContactOverride\":{\"value\":false},\"CashAccount\":{\"value\":\"10200\"},\"ContactID\":{\"value\":\"9977\"},\"ControlTotal\":{\"value\":31655.0000},\"CreatedDate\":{\"value\":\"2023-02-01T10:16:55.41-05:00\"},\"CreditHold\":{\"value\":false},\"CurrencyID\":{\"value\":\"USD\"},\"CurrencyRate\":{\"value\":1.00000000},\"CurrencyRateTypeID\":{},\"CustomerID\":{\"value\":\"ABARTENDE\"},\"CustomerOrder\":{},\"Date\":{\"value\":\"2023-02-01T00:00:00-05:00\"},\"Description\":{\"value\":\"Test for Webinar by Key Fields\"},\"DestinationWarehouseID\":{},\"DisableAutomaticDiscountUpdate\":{\"value\":false},\"EffectiveDate\":{\"value\":\"2013-01-01T00:00:00-05:00\"},\"ExternalOrderOrigin\":{},\"ExternalOrderOriginal\":{},\"ExternalOrderSource\":{},\"ExternalRef\":{},\"ExternalRefundRef\":{},\"Hold\":{\"value\":false},\"IsTaxValid\":{},\"LastModified\":{\"value\":\"2023-02-01T10:18:32.51-05:00\"},\"LocationID\":{\"value\":\"MAIN\"},\"NoteID\":{\"value\":\"2e6f0766-43a2-ed11-8715-28dfebb71e4c\"},\"OrderedQty\":{\"value\":6.000000},\"OrderNbr\":{\"value\":\"XXXXXXXXXXX\"},\"OrderTotal\":{\"value\":31655.0000},\"OrderType\":{\"value\":\"SO\"},\"PaymentMethod\":{\"value\":\"CHECK\"},\"PaymentRef\":{},\"PreferredWarehouseID\":{},\"Project\":{\"value\":\"X\"},\"ReciprocalRate\":{\"value\":1.00000000},\"RequestedOn\":{\"value\":\"2023-02-01T00:00:00-05:00\"},\"ShipToAddressOverride\":{\"value\":false},\"ShipToContactOverride\":{\"value\":false},\"ShipVia\":{},\"Status\":{\"value\":\"Open\"},\"TaxTotal\":{\"value\":0.0000},\"VATExemptTotal\":{\"value\":0.0000},\"VATTaxableTotal\":{\"value\":0.0000},\"WillCall\":{\"value\":true},\"custom\":{},\"_links\":{\"self\":\"/22R193/entity/default/22.200.001/SalesOrder/2e6f0766-43a2-ed11-8715-28dfebb71e4c\",\"files:put\":\"/22R193/entity/default/22.200.001/files/PX.Objects.SO.SOOrderEntry/Document/2e6f0766-43a2-ed11-8715-28dfebb71e4c/{filename}\"}}";
-                //requesterLasVegasSummit.GetNewPath("/22R193/entity/default/22.200.001/SalesOrder/SO/SO006804/Files/Test.jpg", a, b);
+                Requester requesterLasVegasSummit1 = new Requester(LasVegasSummit, "localhost", "5000");
+                //requesterLasVegasSummit1.Execute();
 
 
+                var LasVegasSummit2 = acuprox.Logs.Where(data => data.ProcGuid == new Guid("7520AF0516F142579D0FB12DEF0FC9B5") ||
+                                              data.ProcGuid == new Guid("A0D36859-F697-423A-A27E-FFBE52B6E730") ||
+                                              data.ProcGuid == new Guid("B025B4AA-250E-48C4-9188-BD8B037EB15E") ||
+                                              data.ProcGuid == new Guid("78DF19CC-889D-4BA5-9468-C49278995794") ||
+                                              data.ProcGuid == new Guid("0F371E1B-5594-4A99-80B7-65356F69BCB2") ||
+                                              data.ProcGuid == new Guid("F127F2AF-F359-459C-8BD2-B6BCA6B3F71B") ||
+                                              data.ProcGuid == new Guid("4135FD30-3675-4D90-BB64-3B297F12E7C0") ||
+                                              data.ProcGuid == new Guid("F5946390-FD14-4EDC-B650-9AB125C28778") ||
+                                              data.ProcGuid == new Guid("2FAD7A56-0D36-412C-88FB-D1982D0E66E2") |
+                                              data.ProcGuid == new Guid("B311007F-2ECF-4755-AF31-82C704F6A884"))
+                                              .ToList();
 
+                var LasVegasSummit3 = acuprox.Logs.Where(data => data.ProcGuid == new Guid("CD81E4D8-C06A-4236-9AB0-64C8ABC13FF2") ||
+                                             data.ProcGuid == new Guid("96E9B37A-F91A-4C46-9288-84B8F9483E91") ||
+                                             data.ProcGuid == new Guid("9FAF4D97-6D0C-445B-847C-83EFD224EAED"))
+                                             .OrderBy(data => data.Dt)
+                                             .ToList();
+                Requester requesterLasVegasSummit2 = new Requester(LasVegasSummit2, "localhost");
+                foreach(var element in LasVegasSummit2)
+                {
+                    Console.WriteLine(element.Method + " " + element.Path);
+                }
+                requesterLasVegasSummit2.Execute();
+                //requesterLasVegasSummit2.GetNewPath("/22R193/entity/default/22.200.001/SalesOrder/SalesOrderCreateShipment/status/0c11ac45-b75f-4233-a68a-ac77a5b98cf3", null, null);
 
 
             }
