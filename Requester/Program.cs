@@ -124,9 +124,12 @@ namespace Requester
                 {
                     Console.WriteLine(element.Method + " " + element.Path);
                 }
-                requesterLasVegasSummit2.Execute();
-                //requesterLasVegasSummit2.GetNewPath("/22R193/entity/default/22.200.001/SalesOrder/SalesOrderCreateShipment/status/0c11ac45-b75f-4233-a68a-ac77a5b98cf3", null, null);
-
+                //requesterLasVegasSummit2.Execute();
+                requesterLasVegasSummit2.GetElibilityToken("http://localhost/22R193", "passsord", "3210DB15-CD4E-AF21-A060-68F2FE1F22E3@Company", "qlnmLLnLjkG8ZwHyQBgB_Q", "admin", "123");
+                //NOTE TO DO: order requests by time not by sesison id
+                //add odata
+                //finish oauth
+                //ask what to do with error responses 
 
             }
 

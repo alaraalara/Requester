@@ -1,15 +1,18 @@
 ﻿
 using Acumatica.Auth.Model;
+using Acumatica.RESTClient.Auxiliary;
 using Newtonsoft.Json;
 using Requester.Models;
+using RestSharp.Authenticators.OAuth;
 using System.Net.Http.Headers;
 using System.Text;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace Requester
 {
     public partial class Requester
     {
-        
+        AuthType authType;
 
 
         public async Task<HttpResponseMessage> Logout(Log log)
@@ -30,6 +33,9 @@ namespace Requester
         /// 
         public async Task<HttpResponseMessage> HttpCall(Log log)
         {
+            if(authType == AuthType.OAUTH)
+            {
+            }
             var url = "http://" + host + portNumber + log.Path;
             if(log.QueryString!= null)
             {
@@ -45,27 +51,45 @@ namespace Requester
             return response;
         }
 
-        private static async Task<Token> GetElibilityToken()
+        public async Task<Token> GetElibilityToken(string baseAddress, string grant_type, string client_id, string client_secret, string username, string password)
         {
-            string baseAddress = @"https://blah.blah.blah.com/oauth2/token";
-
-            string grant_type = "client_credentials";
-            string client_id = "myId";
-            string client_secret = "shhhhhhhhhhhhhhItsSecret";
-
-            var form = new Dictionary<string, string>
+            Console.WriteLine("a0");
+            var form = FormUrlEncodedConverter.ToFormUrlEncoded(new Dictionary<string, string>
+                {
+                    {"grant_type", "password" },
+                    {"client_id", client_id },
+                    {"client_secret", client_secret },
+                    {"username", username },
+                    {"password", password },
+                    {"scope", "api api:concurrent_access"},
+                    {"scope", "api"}
+                });
+            Console.WriteLine("b1");
+            /*
+            Dictionary<string, string> form = new Dictionary<string, string>();
+            form.Add("grant_type", grant_type);
+            /*
                 {
                     {"grant_type", grant_type},
                     {"client_id", client_id},
                     {"client_secret", client_secret},
-                };
+                    {"username", username},
+                    {"password", password},
+                    {"scope", "api api:concurrent_access"},
+                    {"scope", "api"},
 
-            HttpResponseMessage tokenResponse = await client.PostAsync(baseAddress, new FormUrlEncodedContent(form));
+                };*/
+            HttpResponseMessage tokenResponse = await client.PostAsync(baseAddress, new StringContent(form));
             var jsonContent = await tokenResponse.Content.ReadAsStringAsync();
             Token tok = JsonConvert.DeserializeObject<Token>(jsonContent);
+            Console.WriteLine(jsonContent);
             return tok;
         }
 
 
+    }
+    public enum AuthType
+    {
+        REST, OAUTH
     }
 }

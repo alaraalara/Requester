@@ -16,7 +16,6 @@ namespace Requester
 {
     public partial class Requester
     {
-        //NOTE Might be edge cases where bunch of collection of both rest and oatuh type of different session id requests might be executed!
         private bool IsSameBatchRest(List<Log> ListOfRequests)
         {
             //can be 2 login requests too. It should check for every login requests. This only assume 1 login request and its session id.
@@ -38,8 +37,7 @@ namespace Requester
             }
         }
 
-        //asumes that login and request for token has to be included in the batch!
-        //TODO: TEST IT!
+        
         private bool IsSameBatchOAuth(List<Log> ListOfRequests)
         {
             System.Guid? tokenRequest = ListOfRequests.Where(r => r.Path != null && r.Path.ToLower().Contains("token")).First().ProcGuid;
@@ -75,8 +73,7 @@ namespace Requester
             }
             else
             {
-                //instead of throwing exception it should just return the old request as there is nothing to compare
-                //What about errors?
+                
                 throw new Exception("The structure is not Json");
             }
         }
@@ -103,8 +100,6 @@ namespace Requester
             }
         }
 
-        //TODO: has to check for error responses! WHAT TO DO FOR THEM
-        //NOTE TODO: Url might change too! depending on the previous body
         private Log ChangeRequestBody(string OldPreviousResponse, string NewPreviousResponse, Log Request, int index = -1)
         {
             if (Request.Body.IsNullOrEmpty() || IsValidJson(Request.Body) == false)
@@ -174,8 +169,6 @@ namespace Requester
                     }
                     else
                     {
-                        //the path of the request might be different than that of response (additional fields)
-                        //TODO: can there be more than 1 additional field?
                         var tokensRequest = JsonExtensions.FindTokens(newReqJson, "value").Concat(JsonExtensions.FindTokens(newReqJson, "id"));
                         foreach (var token2 in tokensRequest)
                         {
@@ -233,7 +226,7 @@ namespace Requester
             var tokens = JsonExtensions.FindTokens(JToken.Parse(difference), "value").Concat(JsonExtensions.FindTokens(JToken.Parse(difference), "id"))
                 .Concat(JsonExtensions.FindTokens(JToken.Parse(difference), "files:put")).Concat(JsonExtensions.FindTokens(JToken.Parse(difference), "self"));
             var pathList = path.Split('/');
-            foreach (var token in tokens) // will the end value be always in token??????????
+            foreach (var token in tokens) 
             {
 
                 if (token != null && token.ToArray().Length > 1 && pathList.Contains(token[0].ToString()))
@@ -261,19 +254,12 @@ namespace Requester
 
         private string CompareQueryStringAndResponse(Log PreviousResponse, Log NewResponse, string Cookies)
         {
-            string a = "?fileID=aa015587-d4e0-47f6-84f5-42fc5f9ff870";
-            string b = "?$expand=Address&$top=1000&$skip=0&$custom=&$filter=Type%20eq%20'Contact'";
-            string c2 = "?$filter=Balance%20eq%200.0M%20and%20Hold%20ne%20true%20and%20LastModifiedDateTime%20gt%20datetimeoffset'2022-04-06T06%3A29%3A50.218%2B00%3A00'&$top=1000&$skip=0&$custom=&$expand=Details";
-            string c = "?CustomerID=ABARTENDE";// no case where ? starts
-            string d = "?rowNumber=19";
+            
 
             var prevResJson = JObject.Parse(PreviousResponse.Body);
             var newResJson = JObject.Parse(NewResponse.Body);
 
-            Cookies = b;
-            //note equals edge case in filter (Like string c2)
-            //edge case: antyhing that starts with dollar sign (filter, skip, expand and etc...)
-            //c = c.Remove(0, 1);
+            
             var filterList = new Regex("&");
             Cookies = Cookies.Remove(0, 1);//removes '?'
             foreach (var filter in filterList.Split(Cookies))
