@@ -14,30 +14,10 @@ using System.Net;
 
 namespace Requester
 {
-    public partial class Requester
+    public partial class Requests
     {
-        private bool IsSameBatchRest(List<Log> ListOfRequests)
-        {
-            //can be 2 login requests too. It should check for every login requests. This only assume 1 login request and its session id.
-            System.Guid? LoginProcGUID = ListOfRequests.Where(r => r.Path != null && r.Path.ToLower().Contains("login")).First().ProcGuid;
-            var cookies = ListOfRequests.Where(r => r.ProcGuid == LoginProcGUID && r.EventType == 2).First().Headers;
-            string sessionID = null;
-            if (cookies != null && cookies.Contains("ASP.NET_SessionId:"))
-            {
-                sessionID = cookies.Substring(cookies.IndexOf("ASP.NET_SessionId:")).Split(',')[0];
-                Console.WriteLine(sessionID);
-            }
-            if (ListOfRequests.Where(r => r.Headers != null && r.Headers.IndexOf("ASP.NET_SessionId:") != -1).All(r => r.Headers.Substring(r.Headers.IndexOf("ASP.NET_SessionId:")).Split(',')[0] == sessionID))
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-        
+       
+        /*
         private bool IsSameBatchOAuth(List<Log> ListOfRequests)
         {
             System.Guid? tokenRequest = ListOfRequests.Where(r => r.Path != null && r.Path.ToLower().Contains("token")).First().ProcGuid;
@@ -58,7 +38,7 @@ namespace Requester
             }
 
         }
-
+        */
 
         private JToken? GetJToken(string body)
         {
@@ -87,7 +67,7 @@ namespace Requester
             }
             catch (JsonReaderException ex)
             {
-                //Trace.WriteLine(ex);
+                Trace.WriteLine(ex);
                 return false;
             }
         }
@@ -191,8 +171,6 @@ namespace Requester
 
         public string GetNewPath(string path, string oldResponse, string newResponse, int index = -1)
         {
-            AddLocation("Date:Mon, 06 Feb 2023 06:21:39 GMT,Cache-Control:private,Location:/22R193/entity/default/22.200.001/SalesOrder/SalesOrderCreateShipment/status/0c11ac45-b75f-4233-a68a-ac77a5b98cf3,Set-Cookie:Locale=TimeZone=GMTM0800A&Culture=en-US; path=/,UserBranch=16; path=/,Locale=TimeZone=GMTM0800A&Culture=en-US; path=/,UserBranch=16; path=/,requestid=4C1EB7EBDF28158711EDA5E680BC0875; path=/,requeststat=+st:376+sc:~/entity/default/22.200.001/salesorder/salesordercreateshipment+start:638112612988795851+tg:; path=/,Content-Length:0",
-                "Date:Mon, 06 Feb 2023 06:21:39 GMT,Cache-Control:private,Location:/xxXXXXXXXXXXXXXXXXXXXXXXX8,Set-Cookie:Locale=TimeZone=GMTM0800A&Culture=en-US; path=/,UserBranch=16; path=/,Locale=TimeZone=GMTM0800A&Culture=en-US; path=/,UserBranch=16; path=/,requestid=4C1EB7EBDF28158711EDA5E680BC0875; path=/,requeststat=+st:376+sc:~/entity/default/22.200.001/salesorder/salesordercreateshipment+start:638112612988795851+tg:; path=/,Content-Length:0");
             if (path.Contains("status"))
             {
                 var location = path.Substring(path.IndexOf("status") + "status".Length + 1).Split(",")[0];
@@ -238,18 +216,6 @@ namespace Requester
             return path;
 
 
-        }
-
-        public void AddLocation(string oldHeader, string newHeader)
-        {
-            if (oldHeader.Contains("Location") && newHeader.Contains("Location"))
-            {
-                var indexOld = oldHeader.IndexOf("Location");
-                var indexNew = newHeader.IndexOf("Location");
-                var oldLocation = oldHeader.Substring(indexOld + "Location:".Length).Split(",")[0];
-                var newLocation = newHeader.Substring(indexNew + "Location:".Length).Split(",")[0];
-                LocationList.Add(new KeyValuePair<string, string>(oldLocation, newLocation));
-            }
         }
 
         private string CompareQueryStringAndResponse(Log PreviousResponse, Log NewResponse, string Cookies)

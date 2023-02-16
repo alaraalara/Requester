@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Requester;
 
 namespace Requester
 {
@@ -13,21 +14,21 @@ namespace Requester
         public static void SetByPath(this JToken obj, string path, JToken value)
         {
             Console.WriteLine(path);
-            Console.WriteLine(obj);   
+            Console.WriteLine(obj);
             JToken? token = obj.SelectToken(path);
             Console.WriteLine(token);
             token?.Replace(value);
         }
 
-        
+
         public static List<JToken> FindTokens(this JToken containerToken, string name)
         {
             List<JToken> matches = new List<JToken>();
-            FindTokens(containerToken, name, matches);       
+            FindTokens(containerToken, name, matches);
             return matches;
         }
 
-       
+
 
         private static void FindTokens(JToken containerToken, string name, List<JToken> matches)
         {
@@ -55,7 +56,7 @@ namespace Requester
         {
             if (containerToken.Type == JTokenType.Object)
             {
-                int count = -1;  
+                int count = -1;
                 foreach (JProperty child in containerToken.Children<JProperty>())
                 {
                     if (child.Name == name)

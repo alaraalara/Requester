@@ -1,142 +1,211 @@
-﻿using Requester.Models;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Requester.Api;
+using Requester.Models;
+using Requester;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Text;
-using System.Threading.Tasks;
-using RestSharp;
-using System.Text.Json.Nodes;
-using Acumatica.RESTClient.Client;
-using Acumatica.Auth.Api;
-using Newtonsoft.Json.Linq;
-using JsonDiffPatchDotNet;
-using Newtonsoft;
-using Json.Net;
-using Newtonsoft.Json;
-using System.Text.RegularExpressions;
-using System.Reflection;
-using System.Net.Http.Headers;
-using Azure.Core;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
 namespace Requester
 {
     public partial class Requester
     {
-        private HttpClient client;
-        private string portNumber;
-        private string host; 
-        private List<Log> ListOfRequests;
-        private List<KeyValuePair<string, string>> ResponseBodies;
-        private List<KeyValuePair<string, string>> LocationList;
+        private string PortNumber;
+        private string Host; 
+        private IEnumerable<RequestResponse> RequestResponsePairs;
+        private Dictionary<string, List<Requests>> GroupBySession; 
 
-        public Requester(List<Log> ListOfRequests, string Host, string portNumber="") {
-            this.client = new HttpClient();
-            this.portNumber = ":" + portNumber;
-            this.host = Host;
-            this.ListOfRequests = ListOfRequests;
-            ResponseBodies = new List<KeyValuePair<string, string>>();
-            LocationList = new List<KeyValuePair<string, string>>();
-        }       
 
-        public void Execute()
-        {
-            
-            if (ListOfRequests.Any(log => log.Path != null && log.Path.ToLower().Contains("login")))
-            {
-                var login = ListOfRequests.Where(log => log.Path.Contains("login")).First();
-                try
-                {
-                    ReExecuteRequests(client);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e.Message);
-                    Console.WriteLine(e.StackTrace);
-                    Logout(login);
-
-                }
-
-            }
-            
+        public Requester(IEnumerable<Log> ListOfRequests, string Host, string PortNumber = "") {
+            this.PortNumber = ":" + PortNumber;
+            this.Host = Host;
+            ListOfRequests = ListOfRequests.OrderBy(data => data.Dt);
+            RequestResponsePairs = from request in ListOfRequests
+                                   join response in ListOfRequests on request.ProcGuid equals response.ProcGuid
+                                   where request.EventType == 1 && response.EventType == 2
+                                   select new RequestResponse { Request = request, Response = response }; ;
+            GroupBySession = new Dictionary<string, List<Requests>>();
         }
 
-     
-        private void ReExecuteRequests(HttpClient client)
+        /// <summary>
+        /// Groups requests according to their sessionID.
+        /// </summary>
+        private void OrganizeRequests()
         {
-            Log? login = null;
-            var query =
-                from request in ListOfRequests
-                join response in ListOfRequests on request.ProcGuid equals response.ProcGuid
-                where request.EventType == 1 && response.EventType == 2
-                select new { Request = request, Response = response } ;
-            
-            if (ListOfRequests.Any(log => log.Path!=null && log.Path.ToLower().Contains("login")))
+            PutODataBatch();
+            PutRestBatch();
+            PutOauthBatch();
+        }
+
+        private Dictionary<string, List<RequestResponse>> GetGroupBySessionList(IEnumerable<IGrouping<bool, RequestResponse>> sameSessionGroup)
+        {
+            Dictionary<string, List<RequestResponse>> GroupBySessionList = new Dictionary<string, List<RequestResponse>>();
+            foreach (var group in sameSessionGroup)
             {
-                login = ListOfRequests.Where(log => log.Path.Contains("login") && log.EventType==1).First();
-            }
-            if(login != null)
-            {
-                var loginResponse = HttpCall(login).Result;
-                if (loginResponse != null && (int)loginResponse.StatusCode == 204)
+                foreach (var log in group)
                 {
-                    HttpResponseMessage? NewPreviousResponse =null;
-                    Log? OldPreviousResponseLog = null;
 
-                    foreach (var data in query.OrderBy(log => log.Request.Dt))
+                    var sessionID = GetSessionId(log);
+                    if (GroupBySessionList.ContainsKey(sessionID))
                     {
-                        try
-                        {
-                            Log NewRequest = data.Request;
-
-                                 if (NewPreviousResponse != null && OldPreviousResponseLog!=null)
-                            {
-                                //data.response has to be the prev response before data.request
-                                NewRequest.Path = GetNewPath(NewRequest.Path, OldPreviousResponseLog.Body, NewPreviousResponse.Content.ReadAsStringAsync().Result);
-                            }
-                            if(NewPreviousResponse!=null)
-                            {
-                                NewRequest = ChangeRequestBody(OldPreviousResponseLog.Body, NewPreviousResponse.Content.ReadAsStringAsync().Result, data.Request);
-                            }
-
-                            NewPreviousResponse = HttpCall(NewRequest).Result;
-                            OldPreviousResponseLog = data.Response;
-                            AddLocation(OldPreviousResponseLog.Headers.ToString(), NewPreviousResponse.Headers.ToString());
-                            Console.WriteLine(NewRequest.Path);
-                            Console.WriteLine(NewPreviousResponse.Content.ReadAsStringAsync().Result);
-                            Console.WriteLine(NewPreviousResponse.StatusCode);
-                        }
-                        catch(Exception e)
-                        {
-                            Console.WriteLine(e.Message);
-                            Console.WriteLine(e.StackTrace);
-                            Logout(login);
-                        }
-                       
-
+                        GroupBySessionList[sessionID].Add(new RequestResponse { Request = log.Request, Response = log.Response });
+                        //GroupBySessionList[sessionID] = GroupBySessionList[sessionID];
+                    }
+                    else
+                    {
+                        GroupBySessionList.Add(sessionID, new List<RequestResponse> { new RequestResponse { Request = log.Request, Response = log.Response } });
                     }
 
                 }
+            }
+            return GroupBySessionList;
+        }
+
+        private void PutOauthBatch(IEnumerable<RequestResponse> list = null)
+        {
+            if (list == null)
+            {
+                list = RequestResponsePairs;
+            }
+            var sameSessionGroup = RequestResponsePairs.Where(data => (data.Request.Headers != null && data.Request.Headers.Contains("Authorization:Bearer"))
+            || data.Request.Path.Contains("identity/connect/token")).OrderBy(data => data.Request.Dt).GroupBy(data => GetSessionId(data) != string.Empty); ;
+
+            foreach(var kvp in GetGroupBySessionList(sameSessionGroup))
+            {
+                if(GroupBySession.ContainsKey(kvp.Key))
+                {
+                    var requestGroup = GroupBySession[kvp.Key];
+                    requestGroup.Add(new Requests(kvp.Value, AuthType.OAUTH, "http://" + Host + PortNumber));
+                    GroupBySession[kvp.Key] = requestGroup;
+                }
                 else
                 {
-                    throw new Exception("can't login");
+                    GroupBySession.Add(kvp.Key, new List<Requests> { new Requests(kvp.Value, AuthType.OAUTH, "http://" + Host + PortNumber)});
                 }
             }
-            else
-            {
-                throw new Exception("credential info is missing. Can't login");
-            }
-
-
 
         }
 
-       
+        private void PutODataBatch()
+        {
+            Dictionary<string, List<RequestResponse>> GroupBySessionList = new Dictionary<string, List<RequestResponse>>();
+            var pairs = new List<RequestResponse>();
+            var odata = RequestResponsePairs.Where(data => data.Request.Path.ToLower().Contains("odata"));
+            var sameGroupBasic = odata.GroupBy(data => GetBasicAuthCredentials(data.Request) != string.Empty);
+            foreach(var group in sameGroupBasic)
+            {
+                foreach(var log in group)
+                {
+                    var sessionID = GetBasicAuthCredentials(log.Request);
+                    if (GroupBySessionList.ContainsKey(sessionID))
+                    {
+                        GroupBySessionList[sessionID].Add(new RequestResponse { Request = log.Request, Response = log.Response });
+                       //GroupBySessionList[sessionID] = GroupBySessionList[sessionID];
+                    }
+                    else
+                    {
+                        GroupBySessionList.Add(sessionID, new List<RequestResponse> { new RequestResponse { Request = log.Request, Response = log.Response } });
+                    }
+                }
+            }
+            foreach (var kvp in GroupBySessionList)
+            {
+                if (GroupBySession.ContainsKey(kvp.Key))
+                {
+                    var requestGroup = GroupBySession[kvp.Key];
+                    requestGroup.Add(new Requests(kvp.Value, AuthType.BASIC, "http://" + Host + PortNumber));
+                    GroupBySession[kvp.Key] = requestGroup;
 
-      
+                }
+                GroupBySession.Add(kvp.Key, new List<Requests> { new Requests(kvp.Value, AuthType.BASIC, "http://" + Host + PortNumber) });
+            }
 
+            PutOauthBatch(odata);
+        }
+        
+        private void PutRestBatch()
+        {
+            Dictionary<string, List<RequestResponse>> GroupBySessionList = new Dictionary<string, List<RequestResponse>>();
+            var sameSessionGroup = RequestResponsePairs.Where(data => data.Request.Headers != null && data.Request.Headers.Contains("Bearer") ==false
+            && data.Request.Headers.Contains("Basic")==false && data.Request.Path.Contains("identity") ==false).GroupBy(data => GetSessionId(data) != string.Empty);
+            
+            foreach(var kvp in GetGroupBySessionList(sameSessionGroup))
+            {
+                if(GroupBySession.ContainsKey(kvp.Key))
+                {
+                    var requestGroup = GroupBySession[kvp.Key];
+                    requestGroup.Add(new Requests(kvp.Value, AuthType.REST, "http://" + Host + PortNumber));
+                    GroupBySession[kvp.Key] = requestGroup;
+
+                }
+                GroupBySession.Add(kvp.Key, new List<Requests> { new Requests(kvp.Value, AuthType.REST, "http://" + Host + PortNumber) });
+
+            }
+        }
+
+        private string GetSessionId(RequestResponse Pair)
+        {
+            if ((Pair.Request != null || Pair.Response != null) && (Pair.Request.Cookies.IsNullOrEmpty() == false || Pair.Response.Cookies.IsNullOrEmpty() == false))
+            {
+                if (Pair.Request.Cookies.Contains("ASP.NET_SessionId:"))
+                {
+                    return Pair.Request.Cookies.Substring(Pair.Request.Cookies.IndexOf("ASP.NET_SessionId:")).Split(',')[0];
+                }
+                else if(Pair.Response.Cookies.Contains("ASP.NET_SessionId:")){
+                    return Pair.Response.Cookies.Substring(Pair.Response.Cookies.IndexOf("ASP.NET_SessionId:")).Split(',')[0];
+                }
+            }
+            return String.Empty;
+        }
+        
+        private string GetBasicAuthCredentials(Log log)
+        {
+            if (log.Headers.IsNullOrEmpty() == false && log.Headers.Contains("Basic"))
+            {
+                var index = log.Headers.IndexOf("Basic");
+                return log.Headers.Substring(index).Split(',')[0];
+            }
+            return String.Empty;
+        }
+        private Dictionary<string, string> GetOAuthCredentials(Log log)
+        {
+            Dictionary<string, string> dict = new Dictionary<string, string>();
+            if (log.Body.IsNullOrEmpty() == false)
+            {
+                string[] keyValuePairs = log.Body.Split('&');
+                foreach (string keyValuePair in keyValuePairs)
+                {
+                    string[] keyValue = keyValuePair.Split('=');
+                    dict.Add(keyValue[0], keyValue[1]);
+                }
+            }
+            return dict;
+        }
+
+        public void Execute()
+        {
+            OrganizeRequests();
+            foreach(var data in RequestResponsePairs)
+            {
+                try
+                {
+                    string sessionInfo = GetSessionId(data);
+                    if (sessionInfo == string.Empty)
+                    {
+                        sessionInfo = GetBasicAuthCredentials(data.Request);
+                    }               
+                    var newResponse = GroupBySession[sessionInfo].Where(variable=>variable.GetRequestsList().Contains(data.Request)).First().GetNewResponse(data);
+                    Console.WriteLine(newResponse.StatusCode);
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+                
+            }
+        }
 
     }
 }
